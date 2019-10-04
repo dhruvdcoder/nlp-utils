@@ -1,6 +1,6 @@
 """Utils common to all datasets"""
 from pathlib import Path
-from torchtext.utils import download_from_url
+from torchtext.utils import download_from_url as tt_download_from_url
 from typing import Dict, Tuple, Optional, Union, List
 import logging
 import zipfile
@@ -8,8 +8,24 @@ import gzip
 import tarfile
 import shutil
 import warnings
-
+import gdown
+import re
 logger = logging.getLogger(__name__)
+
+GDRIVE_PREFIX = r"^https://drive\.google\.com\/"
+GDRIVE_CONFORMATION = r"^https://drive\.google\.com\/uc\?id=(\S+)"
+
+
+def gdrive_download_from_url(url: str, file_name: Union[Path, str]):
+    match = re.match(GDRIVE_PREFIX, url)
+
+    if not match:
+        raise ValueError(
+            ("Google file link must be of "
+             "the form 'https://drive.google.com/open?id=1R1c-hfPSxUf' "
+             "but provide link is {}").format(url))
+
+    return gdown.download(url, file_name, quiet=False)
 
 
 def download(url: str, file_name: Union[Path, str]):
@@ -19,8 +35,13 @@ def download(url: str, file_name: Union[Path, str]):
 
     if isinstance(file_name, Path):
         file_name = str(file_name.absolute())
+    # check url type
+    is_gdrive = re.match(GDRIVE_PREFIX, url)
 
-    return download_from_url(url, file_name)
+    if is_gdrive:
+        return gdrive_download_from_url(url, file_name)
+    else:
+        return tt_download_from_url(url, file_name)
 
 
 def download_if_missing(url: str, check: Path) -> bool:
